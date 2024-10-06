@@ -1,0 +1,147 @@
+info:
+  version: '1.0.0'
+  title: 'Survey Service API'
+  description: 'APIs for user registration, login, survey creation, taking survey, and getting survey results'
+servers:
+  - url: 'http://localhost:3000'
+    description: 'Local server'
+paths:
+  /user/register:
+    post:
+      summary: 'Register a new user'
+      description: 'Register a new user with username, email, and password'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: 'User registered successfully'
+  /user/login:
+    post:
+      summary: 'User login'
+      description: 'Authenticate user and generate JWT token'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: 'User logged in successfully'
+  /survey/create:
+    post:
+      summary: 'Create a new survey'
+      description: 'Create a new survey with title, description, and list of questions'
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                questions:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: 'Survey created successfully'
+  /survey/all:
+    get:
+      summary: 'Get all surveys'
+      description: 'Retrieve all surveys along with their questions'
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 'List of all surveys'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Survey'
+  /survey/take:
+    post:
+      summary: 'Take a survey'
+      description: 'Take a survey by providing survey ID and answers'
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                surveyId:
+                  type: integer
+                answers:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: 'Survey taken successfully'
+  /survey/results:
+    get:
+      summary: 'Get survey results'
+      description: 'Retrieve survey results for the authenticated user'
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 'Survey results for the authenticated user'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SurveyResult'
+components:
+  schemas:
+    Survey:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        userId:
+          type: integer
+        questions:
+          type: array
+          items:
+            type: string
+    SurveyResult:
+      type: object
+      properties:
+        # Define properties for survey results
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
