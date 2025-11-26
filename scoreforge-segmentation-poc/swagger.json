@@ -1,0 +1,599 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Gaming Leaderboard API",
+    "description": "A high-performance gaming leaderboard system API that allows players to submit scores, retrieve top-ranked players, and check their own ranking. Supports multiple game modes (Story Mode and Multiplayer Mode) with real-time leaderboard updates.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Support",
+      "email": "support@example.com"
+    },
+    "license": {
+      "name": "ISC",
+      "url": "https://opensource.org/licenses/ISC"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Development server"
+    },
+    {
+      "url": "https://api.example.com",
+      "description": "Production server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Leaderboard",
+      "description": "Leaderboard operations"
+    },
+    {
+      "name": "Health",
+      "description": "Health check endpoints"
+    }
+  ],
+  "paths": {
+    "/api/leaderboard/submit": {
+      "post": {
+        "tags": ["Leaderboard"],
+        "summary": "Submit a score",
+        "description": "Submit a new score for a user in a specific game mode. The score will be added to the user's total score and the leaderboard will be updated. Uses atomic transactions to ensure data consistency.",
+        "operationId": "submitScore",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitScoreRequest"
+              },
+              "examples": {
+                "storyMode": {
+                  "summary": "Story Mode Score Submission",
+                  "value": {
+                    "user_id": 123,
+                    "score": 1500,
+                    "game_mode": "story"
+                  }
+                },
+                "multiplayerMode": {
+                  "summary": "Multiplayer Mode Score Submission",
+                  "value": {
+                    "user_id": 456,
+                    "score": 2500,
+                    "game_mode": "multiplayer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Score submitted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitScoreResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Score submitted successfully"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - Invalid input parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "invalidUserId": {
+                    "value": {
+                      "error": "Invalid user_id"
+                    }
+                  },
+                  "invalidScore": {
+                    "value": {
+                      "error": "Invalid score"
+                    }
+                  },
+                  "invalidGameMode": {
+                    "value": {
+                      "error": "Invalid game_mode. Must be \"story\" or \"multiplayer\""
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests - Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": "Internal server error",
+                  "message": "Database connection failed"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leaderboard/top": {
+      "get": {
+        "tags": ["Leaderboard"],
+        "summary": "Get top players",
+        "description": "Retrieve the top N players for a specific game mode. Results are sorted by total score in descending order. The response is cached for 30 seconds to improve performance.",
+        "operationId": "getTopPlayers",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of players to return (default: 10, max: 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "example": 10
+          },
+          {
+            "name": "game_mode",
+            "in": "query",
+            "description": "Game mode to filter by (default: story)",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/GameMode"
+            },
+            "example": "story"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved top players",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPlayersResponse"
+                },
+                "example": {
+                  "success": true,
+                  "data": [
+                    {
+                      "userId": 123,
+                      "username": "user_123",
+                      "totalScore": 50000,
+                      "rank": 1
+                    },
+                    {
+                      "userId": 456,
+                      "username": "user_456",
+                      "totalScore": 45000,
+                      "rank": 2
+                    },
+                    {
+                      "userId": 789,
+                      "username": "user_789",
+                      "totalScore": 40000,
+                      "rank": 3
+                    }
+                  ],
+                  "gameMode": "story",
+                  "limit": 10
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests - Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leaderboard/rank/{user_id}": {
+      "get": {
+        "tags": ["Leaderboard"],
+        "summary": "Get player rank",
+        "description": "Get the current rank and total score for a specific player in a game mode. The rank is calculated based on the number of players with higher scores.",
+        "operationId": "getPlayerRank",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "The ID of the user",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 123
+          },
+          {
+            "name": "game_mode",
+            "in": "query",
+            "description": "Game mode to filter by (default: story)",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/GameMode"
+            },
+            "example": "story"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved player rank",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerRankResponse"
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "userId": 123,
+                    "username": "user_123",
+                    "totalScore": 50000,
+                    "rank": 1
+                  },
+                  "gameMode": "story"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Player not found in leaderboard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundResponse"
+                },
+                "example": {
+                  "error": "Player not found in leaderboard",
+                  "userId": 999999,
+                  "gameMode": "story"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests - Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check",
+        "description": "Check the health status of the API server, database connection, and Redis cache. Returns the current status of all system components.",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "System is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "status": "ok",
+                  "timestamp": "2024-01-01T12:00:00.000Z",
+                  "database": "connected",
+                  "redis": "connected"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GameMode": {
+        "type": "string",
+        "enum": ["story", "multiplayer"],
+        "description": "Game mode type",
+        "example": "story"
+      },
+      "SubmitScoreRequest": {
+        "type": "object",
+        "required": ["user_id", "score", "game_mode"],
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "description": "The ID of the user submitting the score",
+            "minimum": 1,
+            "example": 123
+          },
+          "score": {
+            "type": "integer",
+            "description": "The score value to submit",
+            "minimum": 0,
+            "example": 1500
+          },
+          "game_mode": {
+            "$ref": "#/components/schemas/GameMode"
+          }
+        },
+        "example": {
+          "user_id": 123,
+          "score": 1500,
+          "game_mode": "story"
+        }
+      },
+      "SubmitScoreResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates if the request was successful",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "description": "Success message",
+            "example": "Score submitted successfully"
+          }
+        },
+        "required": ["success", "message"]
+      },
+      "LeaderboardPlayer": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "description": "The ID of the user",
+            "example": 123
+          },
+          "username": {
+            "type": "string",
+            "description": "The username of the player",
+            "example": "user_123"
+          },
+          "totalScore": {
+            "type": "integer",
+            "description": "The total score of the player",
+            "example": 50000
+          },
+          "rank": {
+            "type": "integer",
+            "description": "The current rank of the player",
+            "minimum": 1,
+            "example": 1
+          }
+        },
+        "required": ["userId", "username", "totalScore", "rank"]
+      },
+      "TopPlayersResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates if the request was successful",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "description": "Array of top players",
+            "items": {
+              "$ref": "#/components/schemas/LeaderboardPlayer"
+            }
+          },
+          "gameMode": {
+            "$ref": "#/components/schemas/GameMode"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Number of players returned",
+            "example": 10
+          }
+        },
+        "required": ["success", "data", "gameMode", "limit"]
+      },
+      "PlayerRank": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "description": "The ID of the user",
+            "example": 123
+          },
+          "username": {
+            "type": "string",
+            "description": "The username of the player",
+            "example": "user_123"
+          },
+          "totalScore": {
+            "type": "integer",
+            "description": "The total score of the player",
+            "example": 50000
+          },
+          "rank": {
+            "type": "integer",
+            "description": "The current rank of the player",
+            "minimum": 1,
+            "example": 1
+          }
+        },
+        "required": ["userId", "username", "totalScore", "rank"]
+      },
+      "PlayerRankResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates if the request was successful",
+            "example": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlayerRank"
+          },
+          "gameMode": {
+            "$ref": "#/components/schemas/GameMode"
+          }
+        },
+        "required": ["success", "data", "gameMode"]
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Overall system status",
+            "example": "ok"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Current server timestamp",
+            "example": "2024-01-01T12:00:00.000Z"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database connection status",
+            "enum": ["connected", "disconnected"],
+            "example": "connected"
+          },
+          "redis": {
+            "type": "string",
+            "description": "Redis connection status",
+            "enum": ["connected", "disconnected"],
+            "example": "connected"
+          }
+        },
+        "required": ["status", "timestamp", "database", "redis"]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message",
+            "example": "Invalid user_id"
+          },
+          "message": {
+            "type": "string",
+            "description": "Detailed error message (only in development mode)",
+            "example": "user_id must be a positive integer"
+          }
+        },
+        "required": ["error"]
+      },
+      "NotFoundResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message",
+            "example": "Player not found in leaderboard"
+          },
+          "userId": {
+            "type": "integer",
+            "description": "The user ID that was searched",
+            "example": 999999
+          },
+          "gameMode": {
+            "$ref": "#/components/schemas/GameMode"
+          }
+        },
+        "required": ["error", "userId", "gameMode"]
+      },
+      "RateLimitResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Rate limit error message",
+            "example": "Too many requests from this IP, please try again later."
+          }
+        },
+        "required": ["error"]
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "API key for authentication (if implemented)"
+      }
+    }
+  },
+  "security": []
+}
+
